@@ -159,6 +159,8 @@ def generar_anexos(carpeta_json, plantilla_path, salida_path):
         documentos.append((dte, obtener_fecha_obj(fecha), numero))
 
     documentos.sort(key=lambda x: (x[1], x[2]))
+    from processor.rag.rag_service import indexar_documentos
+    indexar_documentos([d[0] for d in documentos])
 
     # ---------------- PROCESO ----------------
 

@@ -1,13 +1,25 @@
 from flask import Flask, request, send_file, render_template, flash, redirect
 import os, uuid
 from processor.excel_service import generar_anexos
+from processor.rag.rag_service import responder_pregunta
 
 app = Flask(__name__)
 app.secret_key = "secret"
 
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
+    
+@app.route("/preguntar", methods=["POST"])
+def preguntar():
+
+    pregunta = request.form.get("pregunta")
+
+    respuesta = responder_pregunta(pregunta)
+
+    return {"respuesta": respuesta}
 
 @app.route("/procesar", methods=["POST"])
 def procesar():

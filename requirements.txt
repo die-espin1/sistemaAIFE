@@ -1,3 +1,6 @@
 flask
 openpyxl
 werkzeug
+openai
+faiss-cpu
+numpy
