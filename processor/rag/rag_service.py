@@ -5,11 +5,21 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    raise ValueError("Falta OPENAI_API_KEY en variables de entorno")
+
+client = OpenAI(api_key=api_key)
 
 store = VectorStore()
 
+
 def indexar_documentos(lista_dte):
+
+    if not lista_dte:
+        return
 
     for dte in lista_dte:
 
@@ -25,6 +35,9 @@ def indexar_documentos(lista_dte):
 
 
 def responder_pregunta(pregunta):
+
+    if not store.embeddings:
+        return "No hay datos indexados aún"
 
     emb_pregunta = generar_embedding(pregunta)
 

@@ -7,16 +7,22 @@ from processor.json_loader import cargar_json_seguro
 app = Flask(__name__)
 app.secret_key = "secret"
 
+# ✅ Crear carpetas necesarias
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("outputs", exist_ok=True)
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-    
+
 @app.route("/preguntar", methods=["POST"])
 def preguntar():
-
     pregunta = request.form.get("pregunta")
+
+    if not pregunta:
+        return {"respuesta": "Pregunta vacía"}
 
     respuesta = responder_pregunta(pregunta)
 
@@ -26,7 +32,13 @@ def preguntar():
 @app.route("/generar_excel", methods=["POST"])
 def generar_excel():
 
-    ruta = generar_anexos("uploads")
+    salida = f"outputs/{uuid.uuid4()}.xlsm"
+
+    ruta = generar_anexos(
+        "uploads",
+        "plantilla.xlsm",
+        salida
+    )
 
     return send_file(ruta, as_attachment=True)
 
@@ -48,7 +60,6 @@ def upload():
             documentos.append(dte)
 
     from processor.rag.rag_service import indexar_documentos
-
     indexar_documentos(documentos)
 
     return {"status": "ok", "cantidad": len(documentos)}
@@ -84,6 +95,7 @@ def procesar():
     except Exception as e:
         flash(str(e))
         return redirect("/")
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

@@ -12,6 +12,9 @@ class VectorStore:
 
     def buscar(self, embedding, k=5):
 
+        if not self.embeddings:
+            return []
+
         embedding = np.array(embedding)
 
         similitudes = []
