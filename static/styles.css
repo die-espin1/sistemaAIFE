@@ -1,0 +1,21 @@
+body {
+    background: #f8f9fa;
+}
+
+.card {
+    border-radius: 12px;
+}
+
+.chat-user {
+    background: #e9ecef;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+.chat-ai {
+    background: #d1e7dd;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
