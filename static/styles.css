@@ -2,20 +2,46 @@ body {
     background: #f8f9fa;
 }
 
+/* Cards */
 .card {
-    border-radius: 12px;
+    border-radius: 14px;
 }
 
+/* Chat */
+.chat-box {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Mensajes */
 .chat-user {
     background: #e9ecef;
     padding: 10px;
-    border-radius: 8px;
+    border-radius: 10px;
     margin-bottom: 5px;
+    font-size: 0.9rem;
 }
 
 .chat-ai {
     background: #d1e7dd;
     padding: 10px;
-    border-radius: 8px;
+    border-radius: 10px;
     margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+/* Responsive ajustes */
+@media (max-width: 576px) {
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .card {
+        padding: 1rem !important;
+    }
+
+    .chat-box {
+        max-height: 250px;
+    }
 }

@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Sistema AI</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -10,53 +12,53 @@
 </head>
 <body>
 
-<div class="container py-5">
+<div class="container py-4 py-md-5">
 
     <!-- HEADER -->
-    <div class="text-center mb-5">
+    <div class="text-center mb-4 mb-md-5">
         <h1 class="fw-bold">Sistema AI Fiscal</h1>
         <p class="text-muted">Procesamiento inteligente de DTE + RAG</p>
     </div>
 
     <div class="row g-4">
 
-        <!-- UPLOAD (solo RAG) -->
-        <div class="col-md-6">
-            <div class="card p-4 shadow-sm">
+        <!-- UPLOAD -->
+        <div class="col-12 col-md-6">
+            <div class="card p-3 p-md-4 shadow-sm h-100">
 
-                <h5>📂 Cargar datos para consultas</h5>
+                <h5 class="mb-3">📂 Cargar datos</h5>
 
                 <form id="uploadForm">
                     <input type="file" name="files" multiple class="form-control mb-3" required>
                     <button class="btn btn-primary w-100">Cargar datos</button>
                 </form>
 
-                <div id="uploadStatus" class="mt-3 text-success fw-bold"></div>
+                <div id="uploadStatus" class="mt-3 text-success fw-bold small"></div>
 
             </div>
         </div>
 
         <!-- RAG -->
-        <div class="col-md-6">
-            <div class="card p-4 shadow-sm">
+        <div class="col-12 col-md-6">
+            <div class="card p-3 p-md-4 shadow-sm h-100">
 
-                <h5>🤖 Consultar datos</h5>
+                <h5 class="mb-3">🤖 Consultar</h5>
 
                 <form id="questionForm">
                     <input type="text" name="pregunta" class="form-control mb-3" placeholder="Ej: total de ventas">
                     <button class="btn btn-dark w-100">Preguntar</button>
                 </form>
 
-                <div id="chatBox" class="mt-3"></div>
+                <div id="chatBox" class="mt-3 chat-box"></div>
 
             </div>
         </div>
 
-        <!-- EXCEL (flujo original restaurado) -->
+        <!-- EXCEL -->
         <div class="col-12">
-            <div class="card p-4 shadow-sm text-center">
+            <div class="card p-3 p-md-4 shadow-sm text-center">
 
-                <h5>📊 Generar Excel (flujo completo)</h5>
+                <h5 class="mb-3">📊 Generar Excel</h5>
 
                 <form id="excelForm" action="/procesar" method="post" enctype="multipart/form-data">
                     
@@ -68,7 +70,7 @@
 
                 </form>
 
-                <div id="loadingExcel" class="text-center mt-3 text-muted" style="display:none;">
+                <div id="loadingExcel" class="text-muted mt-3 small d-none">
                     ⏳ Generando Excel... esto puede tardar unos segundos
                 </div>
 
@@ -78,56 +80,8 @@
     </div>
 </div>
 
-<script>
-
-// ---------------- UPLOAD (RAG) ----------------
-document.getElementById("uploadForm").addEventListener("submit", async e => {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-
-    const res = await fetch("/upload", {
-        method: "POST",
-        body: formData
-    });
-
-    const data = await res.json();
-
-    document.getElementById("uploadStatus").innerText =
-        "✔ Datos cargados: " + data.cantidad;
-});
-
-
-// ---------------- PREGUNTAR ----------------
-document.getElementById("questionForm").addEventListener("submit", async e => {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-
-    const res = await fetch("/preguntar", {
-        method: "POST",
-        body: formData
-    });
-
-    const data = await res.json();
-
-    const chat = document.getElementById("chatBox");
-
-    chat.innerHTML += `
-        <div class="chat-user">🧑 ${formData.get("pregunta")}</div>
-        <div class="chat-ai">🤖 ${data.respuesta}</div>
-    `;
-
-    e.target.reset();
-});
-
-
-// ---------------- EXCEL ----------------
-document.getElementById("excelForm").addEventListener("submit", () => {
-    document.getElementById("loadingExcel").style.display = "block";
-});
-
-</script>
+<!-- JS externo -->
+<script src="{{ url_for('static', filename='app.js') }}"></script>
 
 </body>
 </html>
