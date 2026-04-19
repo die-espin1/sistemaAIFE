@@ -47,11 +47,18 @@ def upload():
     files = request.files.getlist("files")
 
     if not files:
-        return {"cantidad": 0}
+        return {"cantidad": 0, "ignorados": 0}
 
     documentos = []
+    ignorados = 0
 
     for f in files:
+
+        # 🔒 SOLO JSON
+        if not f.filename.lower().endswith(".json"):
+            ignorados += 1
+            continue
+
         ruta = os.path.join("uploads", f.filename)
         f.save(ruta)
 
@@ -59,14 +66,21 @@ def upload():
 
         if dte:
             documentos.append(dte)
+        else:
+            ignorados += 1  # JSON inválido
 
-    # Guardar en sesión (fuente única)
+    # Guardar en sesión
     session["documentos"] = documentos
 
-    # Indexar UNA SOLA VEZ
-    indexar_documentos(documentos)
+    # Indexar UNA sola vez
+    if documentos:
+        indexar_documentos(documentos)
 
-    return {"status": "ok", "cantidad": len(documentos)}
+    return {
+        "status": "ok",
+        "cantidad": len(documentos),
+        "ignorados": ignorados
+    }
 
 
 # ---------------- PREGUNTAR ----------------
@@ -99,12 +113,15 @@ def generar_excel():
 
     try:
         ruta, inconsistencias = generar_anexos(
-           session["documentos"],
-           session.get("nit"),
-           session.get("dui"),
-           session.get("nombre"),
-           salida
+            session["documentos"],
+            session.get("nit"),
+            session.get("dui"),
+            session.get("nombre"),
+            salida
         )
+
+        # Puedes loguear inconsistencias
+        print("⚠️ Inconsistencias detectadas:", inconsistencias)
 
         return send_file(ruta, as_attachment=True)
 
