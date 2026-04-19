@@ -42,11 +42,9 @@ document.getElementById("configForm").addEventListener("submit", async (e) => {
 document.querySelector('input[name="files"]').addEventListener("change", async (e) => {
 
     const files = e.target.files;
-
     if (!files.length) return;
 
     const formData = new FormData();
-
     for (let f of files) {
         formData.append("files", f);
     }
@@ -57,21 +55,28 @@ document.querySelector('input[name="files"]').addEventListener("change", async (
     try {
         const res = await fetch("/upload", {
             method: "POST",
-            body: formData
+            body: formData,
+            credentials: "include"   // 👈 AQUÍ
         });
 
-        const data = await res.json();
+        let data;
+
+        try {
+            data = await res.json();
+        } catch {
+            throw new Error("Respuesta inválida del servidor");
+        }
 
         if (!res.ok) {
-            status.innerText = "❌ Error: " + (data.error || "No se pudo cargar");
-            return;
+            throw new Error(data.error || "Error en el servidor");
         }
 
         status.innerText =
             `✔ Datos cargados: ${data.cantidad} | Ignorados: ${data.ignorados}`;
 
     } catch (err) {
-        status.innerText = "❌ Error al subir archivos";
+        console.error("UPLOAD ERROR:", err);
+        status.innerText = `❌ ${err.message}`;
     }
 });
 

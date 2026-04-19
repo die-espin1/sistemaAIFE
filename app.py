@@ -41,6 +41,73 @@ def config():
 @app.route("/upload", methods=["POST"])
 def upload():
 
+    try:
+        # 🔒 Validar sesión
+        if "nit" not in session:
+            return {"error": "Debe configurar contribuyente"}, 403
+
+        files = request.files.getlist("files")
+
+        print("📂 Archivos recibidos:", [f.filename for f in files])
+
+        if not files:
+            return {
+                "status": "ok",
+                "cantidad": 0,
+                "ignorados": 0
+            }
+
+        documentos = []
+        ignorados = 0
+
+        for f in files:
+
+            try:
+                # 🔒 SOLO JSON
+                if not f.filename.lower().endswith(".json"):
+                    ignorados += 1
+                    continue
+
+                ruta = os.path.join("uploads", f.filename)
+                f.save(ruta)
+
+                dte = cargar_json_seguro(ruta)
+
+                if dte:
+                    documentos.append(dte)
+                else:
+                    print(f"⚠️ JSON inválido: {f.filename}")
+                    ignorados += 1
+
+            except Exception as e:
+                print(f"❌ Error procesando {f.filename}: {str(e)}")
+                ignorados += 1
+
+        # Guardar en sesión
+        session["documentos"] = documentos
+
+        # Indexar documentos (RAG)
+        if documentos:
+            try:
+                indexar_documentos(documentos)
+            except Exception as e:
+                print("⚠️ Error indexando documentos:", str(e))
+
+        return {
+            "status": "ok",
+            "cantidad": len(documentos),
+            "ignorados": ignorados
+        }
+
+    except Exception as e:
+        print("❌ ERROR GENERAL UPLOAD:", str(e))
+
+        return {
+            "error": "Error en carga de archivos",
+            "detalle": str(e)
+        }, 500
+
+
     if "nit" not in session:
         return {"error": "Debe configurar contribuyente"}, 403
 
