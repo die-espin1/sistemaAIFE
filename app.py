@@ -1,5 +1,6 @@
 from flask import Flask, request, send_file, render_template, session
 import os, uuid
+from pathlib import Path
 
 from processor.excel_service import generar_anexos
 from processor.rag.rag_service import responder_pregunta, indexar_documentos
@@ -42,7 +43,6 @@ def config():
 def upload():
 
     try:
-        # 🔒 Validar sesión
         if "nit" not in session:
             return {"error": "Debe configurar contribuyente"}, 403
 
@@ -51,24 +51,25 @@ def upload():
         print("📂 Archivos recibidos:", [f.filename for f in files])
 
         if not files:
-            return {
-                "status": "ok",
-                "cantidad": 0,
-                "ignorados": 0
-            }
+            return {"status": "ok", "cantidad": 0, "ignorados": 0}
+
+        # 🔥 Crear sesión de archivos
+        session_id = str(uuid.uuid4())
+        session["session_id"] = session_id
+
+        ruta_sesion = os.path.join("uploads", session_id)
+        os.makedirs(ruta_sesion, exist_ok=True)
 
         documentos = []
         ignorados = 0
 
         for f in files:
-
             try:
-                # 🔒 SOLO JSON
                 if not f.filename.lower().endswith(".json"):
                     ignorados += 1
                     continue
 
-                ruta = os.path.join("uploads", f.filename)
+                ruta = os.path.join(ruta_sesion, f.filename)
                 f.save(ruta)
 
                 dte = cargar_json_seguro(ruta)
@@ -83,10 +84,7 @@ def upload():
                 print(f"❌ Error procesando {f.filename}: {str(e)}")
                 ignorados += 1
 
-        # Guardar en sesión
-        session["documentos"] = documentos
-
-        # Indexar documentos (RAG)
+        # 🔥 Indexar SOLO en memoria (no guardar en session)
         if documentos:
             try:
                 indexar_documentos(documentos)
@@ -101,68 +99,17 @@ def upload():
 
     except Exception as e:
         print("❌ ERROR GENERAL UPLOAD:", str(e))
-
         return {
             "error": "Error en carga de archivos",
             "detalle": str(e)
         }, 500
 
 
-    if "nit" not in session:
-        return {"error": "Debe configurar contribuyente"}, 403
-
-    files = request.files.getlist("files")
-
-    if not files:
-        return {"cantidad": 0, "ignorados": 0}
-
-    documentos = []
-    ignorados = 0
-
-    for f in files:
-
-        # 🔒 SOLO JSON
-        if not f.filename.lower().endswith(".json"):
-            ignorados += 1
-            continue
-
-        ruta = os.path.join("uploads", f.filename)
-        f.save(ruta)
-
-        try:
-            dte = cargar_json_seguro(ruta)
-
-            if dte:
-                documentos.append(dte)
-            else:
-                ignorados += 1
-
-        except Exception as e:
-            print(f"⚠️ Error procesando archivo {f.filename}: {str(e)}")
-            ignorados += 1
-
-    # Guardar en sesión
-    session["documentos"] = documentos
-
-    # Indexar UNA sola vez
-    if documentos:
-        try:
-            indexar_documentos(documentos)
-        except Exception as e:
-            print("⚠️ Error indexando documentos:", str(e))
-
-    return {
-        "status": "ok",
-        "cantidad": len(documentos),
-        "ignorados": ignorados
-    }
-
-
 # ---------------- PREGUNTAR ----------------
 @app.route("/preguntar", methods=["POST"])
 def preguntar():
 
-    if "documentos" not in session:
+    if "session_id" not in session:
         return {"respuesta": "Primero debes cargar datos"}
 
     pregunta = request.form.get("pregunta")
@@ -183,21 +130,27 @@ def preguntar():
 @app.route("/generar_excel", methods=["POST"])
 def generar_excel():
 
-    if "documentos" not in session:
+    if "session_id" not in session:
         return {"error": "No hay datos cargados"}, 400
+
+    session_id = session.get("session_id")
+    ruta_sesion = os.path.join("uploads", session_id)
+
+    if not os.path.exists(ruta_sesion):
+        return {"error": "No existen archivos para procesar"}, 400
 
     salida = f"outputs/{uuid.uuid4()}.xlsm"
 
     try:
         ruta, inconsistencias = generar_anexos(
-            session["documentos"],
+            ruta_sesion,
             session.get("nit"),
             session.get("dui"),
             session.get("nombre"),
             salida
         )
 
-        # 🔍 LOG DETALLADO (clave para Render)
+        # 🔍 LOG DETALLADO
         if inconsistencias:
             print("⚠️ Inconsistencias detectadas:")
             for i in inconsistencias:
@@ -206,7 +159,6 @@ def generar_excel():
         return send_file(ruta, as_attachment=True)
 
     except Exception as e:
-        # 🔥 ERROR REAL PARA DEBUG
         print("❌ ERROR GENERANDO EXCEL:", str(e))
 
         return {

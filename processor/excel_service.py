@@ -63,21 +63,27 @@ def clasificar_anexo(dte, nit, dui, nombre):
 
 def generar_anexos(documentos, nit, dui, nombre, salida_path):
 
-    # 🔥 Ruta robusta de plantilla (clave para Render)
+    # 🔥 Ruta robusta para Render
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    plantilla = os.path.join(BASE_DIR, "..", "plantilla.xlsm")
+    plantilla = os.path.abspath(os.path.join(BASE_DIR, "..", "plantilla.xlsm"))
+
+    print("📁 Buscando plantilla en:", plantilla)
 
     if not os.path.exists(plantilla):
-        raise Exception("❌ plantilla.xlsm no encontrada en el servidor")
+        raise Exception(f"❌ plantilla.xlsm no encontrada en: {plantilla}")
 
+    # Copiar plantilla
     shutil.copy(plantilla, salida_path)
 
     wb = openpyxl.load_workbook(salida_path, keep_vba=True)
 
-    ws_contrib = wb["ANEXO CONTRIBUYENTES"]
-    ws_consumidor = wb["ANEXO CONSUMIDOR FINAL"]
-    ws_compras = wb["ANEXO DE COMPRAS"]
-    ws_retencion = wb["CASILLA 162"]
+    try:
+        ws_contrib = wb["ANEXO CONTRIBUYENTES"]
+        ws_consumidor = wb["ANEXO CONSUMIDOR FINAL"]
+        ws_compras = wb["ANEXO DE COMPRAS"]
+        ws_retencion = wb["CASILLA 162"]
+    except KeyError as e:
+        raise Exception(f"❌ Hoja no encontrada en Excel: {str(e)}")
 
     # ---------------- PROCESADORES ----------------
 
