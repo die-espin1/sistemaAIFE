@@ -62,19 +62,27 @@ def upload():
         ruta = os.path.join("uploads", f.filename)
         f.save(ruta)
 
-        dte = cargar_json_seguro(ruta)
+        try:
+            dte = cargar_json_seguro(ruta)
 
-        if dte:
-            documentos.append(dte)
-        else:
-            ignorados += 1  # JSON inválido
+            if dte:
+                documentos.append(dte)
+            else:
+                ignorados += 1
+
+        except Exception as e:
+            print(f"⚠️ Error procesando archivo {f.filename}: {str(e)}")
+            ignorados += 1
 
     # Guardar en sesión
     session["documentos"] = documentos
 
     # Indexar UNA sola vez
     if documentos:
-        indexar_documentos(documentos)
+        try:
+            indexar_documentos(documentos)
+        except Exception as e:
+            print("⚠️ Error indexando documentos:", str(e))
 
     return {
         "status": "ok",
@@ -98,7 +106,9 @@ def preguntar():
     try:
         respuesta = responder_pregunta(pregunta)
         return {"respuesta": respuesta}
-    except Exception:
+
+    except Exception as e:
+        print("⚠️ Error en RAG:", str(e))
         return {"respuesta": "Error al procesar la pregunta"}
 
 
@@ -120,13 +130,22 @@ def generar_excel():
             salida
         )
 
-        # Puedes loguear inconsistencias
-        print("⚠️ Inconsistencias detectadas:", inconsistencias)
+        # 🔍 LOG DETALLADO (clave para Render)
+        if inconsistencias:
+            print("⚠️ Inconsistencias detectadas:")
+            for i in inconsistencias:
+                print(i)
 
         return send_file(ruta, as_attachment=True)
 
     except Exception as e:
-        return {"error": str(e)}, 500
+        # 🔥 ERROR REAL PARA DEBUG
+        print("❌ ERROR GENERANDO EXCEL:", str(e))
+
+        return {
+            "error": "Error generando Excel",
+            "detalle": str(e)
+        }, 500
 
 
 # ---------------- MAIN ----------------
