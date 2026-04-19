@@ -1,52 +1,53 @@
-from flask import Flask, request, send_file, render_template, flash, redirect
+from flask import Flask, request, send_file, render_template, session
 import os, uuid
+
 from processor.excel_service import generar_anexos
-from processor.rag.rag_service import responder_pregunta
+from processor.rag.rag_service import responder_pregunta, indexar_documentos
 from processor.json_loader import cargar_json_seguro
 
 app = Flask(__name__)
 app.secret_key = "secret"
 
-# ✅ Crear carpetas necesarias
+# ---------------- CARPETAS ----------------
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("outputs", exist_ok=True)
 
 
+# ---------------- HOME ----------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-@app.route("/preguntar", methods=["POST"])
-def preguntar():
-    pregunta = request.form.get("pregunta")
+# ---------------- CONFIG ----------------
+@app.route("/config", methods=["POST"])
+def config():
 
-    if not pregunta:
-        return {"respuesta": "Pregunta vacía"}
+    nit = request.form.get("nit")
+    dui = request.form.get("dui")
+    nombre = request.form.get("nombre")
 
-    respuesta = responder_pregunta(pregunta)
+    if not nit or not nombre:
+        return {"error": "Datos incompletos"}, 400
 
-    return {"respuesta": respuesta}
+    session["nit"] = nit
+    session["dui"] = dui or ""
+    session["nombre"] = nombre
 
-
-@app.route("/generar_excel", methods=["POST"])
-def generar_excel():
-
-    salida = f"outputs/{uuid.uuid4()}.xlsm"
-
-    ruta = generar_anexos(
-        "uploads",
-        "plantilla.xlsm",
-        salida
-    )
-
-    return send_file(ruta, as_attachment=True)
+    return {"status": "ok"}
 
 
+# ---------------- UPLOAD ----------------
 @app.route("/upload", methods=["POST"])
 def upload():
 
+    if "nit" not in session:
+        return {"error": "Debe configurar contribuyente"}, 403
+
     files = request.files.getlist("files")
+
+    if not files:
+        return {"cantidad": 0}
 
     documentos = []
 
@@ -59,44 +60,59 @@ def upload():
         if dte:
             documentos.append(dte)
 
-    from processor.rag.rag_service import indexar_documentos
+    # Guardar en sesión (fuente única)
+    session["documentos"] = documentos
+
+    # Indexar UNA SOLA VEZ
     indexar_documentos(documentos)
 
     return {"status": "ok", "cantidad": len(documentos)}
 
 
-@app.route("/procesar", methods=["POST"])
-def procesar():
+# ---------------- PREGUNTAR ----------------
+@app.route("/preguntar", methods=["POST"])
+def preguntar():
+
+    if "documentos" not in session:
+        return {"respuesta": "Primero debes cargar datos"}
+
+    pregunta = request.form.get("pregunta")
+
+    if not pregunta:
+        return {"respuesta": "Pregunta vacía"}
 
     try:
-        files = request.files.getlist("files")
+        respuesta = responder_pregunta(pregunta)
+        return {"respuesta": respuesta}
+    except Exception:
+        return {"respuesta": "Error al procesar la pregunta"}
 
-        if not files:
-            flash("No subiste archivos")
-            return redirect("/")
 
-        session = str(uuid.uuid4())
-        upload_dir = f"uploads/{session}"
-        os.makedirs(upload_dir, exist_ok=True)
+# ---------------- GENERAR EXCEL ----------------
+@app.route("/generar_excel", methods=["POST"])
+def generar_excel():
 
-        for f in files:
-            f.save(os.path.join(upload_dir, f.filename))
+    if "documentos" not in session:
+        return {"error": "No hay datos cargados"}, 400
 
-        salida = f"outputs/{session}.xlsm"
+    salida = f"outputs/{uuid.uuid4()}.xlsm"
 
-        resultado = generar_anexos(upload_dir, "plantilla.xlsm", salida)
+    try:
+        ruta, inconsistencias = generar_anexos(
+           session["documentos"],
+           session.get("nit"),
+           session.get("dui"),
+           session.get("nombre"),
+           salida
+        )
 
-        if os.path.exists(resultado):
-            return send_file(resultado, as_attachment=True)
-        else:
-            flash("No se generó el archivo")
-            return redirect("/")
+        return send_file(ruta, as_attachment=True)
 
     except Exception as e:
-        flash(str(e))
-        return redirect("/")
+        return {"error": str(e)}, 500
 
 
+# ---------------- MAIN ----------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)

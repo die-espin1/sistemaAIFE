@@ -12,7 +12,30 @@
 </head>
 <body>
 
-<div class="container py-4 py-md-5">
+<!-- MODAL CONFIGURACIÓN -->
+<div class="modal fade show" id="configModal" tabindex="-1" style="display:block; background: rgba(0,0,0,0.6);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            
+            <div class="modal-header">
+                <h5 class="modal-title">Configuración del Contribuyente</h5>
+            </div>
+
+            <div class="modal-body">
+                <form id="configForm">
+                    <input type="text" name="nit" class="form-control mb-3" placeholder="NIT" required>
+                    <input type="text" name="dui" class="form-control mb-3" placeholder="DUI (opcional)">
+                    <input type="text" name="nombre" class="form-control mb-3" placeholder="Nombre completo" required>
+                    
+                    <button class="btn btn-primary w-100">Guardar y continuar</button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="container py-4 py-md-5" id="mainContent" style="display:none;">
 
     <!-- HEADER -->
     <div class="text-center mb-4 mb-md-5">
@@ -60,14 +83,11 @@
 
                 <h5 class="mb-3">📊 Generar Excel</h5>
 
-                <form id="excelForm" action="/procesar" method="post" enctype="multipart/form-data">
-                    
-                    <input type="file" name="files" multiple class="form-control mb-3" required>
-                    
+                <!-- YA NO SE SUBEN ARCHIVOS AQUÍ -->
+                <form id="excelForm">
                     <button type="submit" class="btn btn-success w-100">
-                        📊 Procesar y Generar Excel
+                        📊 Generar y Descargar Excel
                     </button>
-
                 </form>
 
                 <div id="loadingExcel" class="text-muted mt-3 small d-none">
