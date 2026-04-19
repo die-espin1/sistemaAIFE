@@ -48,8 +48,6 @@ def upload():
 
         files = request.files.getlist("files")
 
-        print("📂 Archivos recibidos:", [f.filename for f in files])
-
         if not files:
             return {"status": "ok", "cantidad": 0, "ignorados": 0}
 
@@ -77,14 +75,13 @@ def upload():
                 if dte:
                     documentos.append(dte)
                 else:
-                    print(f"⚠️ JSON inválido: {f.filename}")
                     ignorados += 1
 
             except Exception as e:
                 print(f"❌ Error procesando {f.filename}: {str(e)}")
                 ignorados += 1
 
-        # 🔥 Indexar SOLO en memoria (no guardar en session)
+        # Indexar para RAG
         if documentos:
             try:
                 indexar_documentos(documentos)
@@ -130,14 +127,33 @@ def preguntar():
 @app.route("/generar_excel", methods=["POST"])
 def generar_excel():
 
-    if "documentos" not in session:
+    if "session_id" not in session:
         return {"error": "No hay datos cargados"}, 400
 
-    salida = f"outputs/{uuid.uuid4()}.xlsm"
-
     try:
+        ruta_sesion = os.path.join("uploads", session["session_id"])
+
+        if not os.path.exists(ruta_sesion):
+            return {"error": "Sesión expirada"}, 400
+
+        documentos = []
+
+        # 🔥 RECONSTRUIR DESDE DISCO
+        for archivo in Path(ruta_sesion).glob("*.json"):
+            try:
+                dte = cargar_json_seguro(archivo)
+                if dte:
+                    documentos.append(dte)
+            except Exception as e:
+                print("⚠️ Error leyendo JSON:", str(e))
+
+        if not documentos:
+            return {"error": "No hay documentos válidos"}, 400
+
+        salida = f"outputs/{uuid.uuid4()}.xlsm"
+
         ruta, inconsistencias = generar_anexos(
-            session["documentos"],
+            documentos,
             session.get("nit"),
             session.get("dui"),
             session.get("nombre"),
@@ -158,14 +174,18 @@ def generar_excel():
             "detalle": str(e)
         }, 500
 
+
+# ---------------- DESCARGAR ----------------
 @app.route("/descargar")
 def descargar():
+
     ruta = request.args.get("ruta")
 
     if not ruta or not os.path.exists(ruta):
         return {"error": "Archivo no encontrado"}, 404
 
     return send_file(ruta, as_attachment=True)
+
 
 # ---------------- MAIN ----------------
 if __name__ == "__main__":
