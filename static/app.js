@@ -1,20 +1,77 @@
+// ---------------- INICIO ----------------
+document.addEventListener("DOMContentLoaded", () => {
+
+    // Ocultar sistema hasta configurar
+    document.getElementById("mainContent").style.display = "none";
+    document.getElementById("configModal").style.display = "block";
+});
+
+
 // ---------------- CONFIGURACIÓN (MODAL) ----------------
 document.getElementById("configForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const formData = new FormData(e.target);
 
-    const res = await fetch("/config", {
-        method: "POST",
-        body: formData
-    });
+    try {
+        const res = await fetch("/config", {
+            method: "POST",
+            body: formData
+        });
 
-    if (res.ok) {
+        const data = await res.json();
+
+        if (!res.ok) {
+            alert(data.error || "Error en configuración");
+            return;
+        }
+
         // Ocultar modal
         document.getElementById("configModal").style.display = "none";
 
         // Mostrar sistema
         document.getElementById("mainContent").style.display = "block";
+
+    } catch (err) {
+        alert("Error configurando contribuyente");
+    }
+});
+
+
+// ---------------- AUTO UPLOAD ----------------
+document.querySelector('input[name="files"]').addEventListener("change", async (e) => {
+
+    const files = e.target.files;
+
+    if (!files.length) return;
+
+    const formData = new FormData();
+
+    for (let f of files) {
+        formData.append("files", f);
+    }
+
+    const status = document.getElementById("uploadStatus");
+    status.innerText = "⏳ Subiendo archivos...";
+
+    try {
+        const res = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            status.innerText = "❌ Error: " + (data.error || "No se pudo cargar");
+            return;
+        }
+
+        status.innerText =
+            `✔ Datos cargados: ${data.cantidad} | Ignorados: ${data.ignorados}`;
+
+    } catch (err) {
+        status.innerText = "❌ Error al subir archivos";
     }
 });
 
@@ -24,7 +81,6 @@ document.getElementById("questionForm").addEventListener("submit", async (e) => 
     e.preventDefault();
 
     const formData = new FormData(e.target);
-
     const chat = document.getElementById("chatBox");
 
     try {
@@ -52,7 +108,7 @@ document.getElementById("questionForm").addEventListener("submit", async (e) => 
 });
 
 
-// ---------------- EXCEL ----------------
+// ---------------- GENERAR EXCEL ----------------
 document.getElementById("excelForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -64,7 +120,11 @@ document.getElementById("excelForm").addEventListener("submit", async (e) => {
             method: "POST"
         });
 
-        if (!res.ok) throw new Error("Error en generación");
+        if (!res.ok) {
+            const errorData = await res.json();
+            console.error("Error backend:", errorData);
+            throw new Error(errorData.detalle || "Error generando Excel");
+        }
 
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
@@ -77,7 +137,7 @@ document.getElementById("excelForm").addEventListener("submit", async (e) => {
         a.remove();
 
     } catch (err) {
-        alert("Error generando Excel");
+        alert("❌ " + err.message);
     }
 
     loading.classList.add("d-none");
