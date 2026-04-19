@@ -118,22 +118,24 @@ document.getElementById("excelForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const loading = document.getElementById("loadingExcel");
+    const box = document.getElementById("inconsistenciasBox");
+
     loading.classList.remove("d-none");
+    box.innerHTML = "";
 
     try {
         const res = await fetch("/generar_excel", {
             method: "POST"
         });
 
+        const data = await res.json();
+
         if (!res.ok) {
-            const errorData = await res.json();
-            console.error("Error backend:", errorData);
-            throw new Error(errorData.detalle || "Error generando Excel");
+            throw new Error(data.error || "Error desconocido");
         }
 
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-
+        // ---------------- DESCARGA ----------------
+        const url = `/descargar?ruta=${encodeURIComponent(data.archivo)}`;
         const a = document.createElement("a");
         a.href = url;
         a.download = "anexos.xlsm";
@@ -141,8 +143,36 @@ document.getElementById("excelForm").addEventListener("submit", async (e) => {
         a.click();
         a.remove();
 
+        // ---------------- INCONSISTENCIAS ----------------
+        if (data.inconsistencias.length > 0) {
+
+            box.innerHTML = `
+                <div class="alert alert-warning mt-3">
+                    <strong>⚠️ Inconsistencias detectadas:</strong>
+                    <ul>
+                        ${data.inconsistencias.map(i => `
+                            <li>
+                                Documento: ${i.numero} |
+                                Fecha: ${i.fecha}
+                            </li>
+                        `).join("")}
+                    </ul>
+                </div>
+            `;
+        } else {
+            box.innerHTML = `
+                <div class="alert alert-success mt-3">
+                    ✔ No se detectaron inconsistencias
+                </div>
+            `;
+        }
+
     } catch (err) {
-        alert("❌ " + err.message);
+        box.innerHTML = `
+            <div class="alert alert-danger mt-3">
+                ❌ ${err.message}
+            </div>
+        `;
     }
 
     loading.classList.add("d-none");

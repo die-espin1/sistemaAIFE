@@ -130,33 +130,25 @@ def preguntar():
 @app.route("/generar_excel", methods=["POST"])
 def generar_excel():
 
-    if "session_id" not in session:
+    if "documentos" not in session:
         return {"error": "No hay datos cargados"}, 400
-
-    session_id = session.get("session_id")
-    ruta_sesion = os.path.join("uploads", session_id)
-
-    if not os.path.exists(ruta_sesion):
-        return {"error": "No existen archivos para procesar"}, 400
 
     salida = f"outputs/{uuid.uuid4()}.xlsm"
 
     try:
         ruta, inconsistencias = generar_anexos(
-            ruta_sesion,
+            session["documentos"],
             session.get("nit"),
             session.get("dui"),
             session.get("nombre"),
             salida
         )
 
-        # 🔍 LOG DETALLADO
-        if inconsistencias:
-            print("⚠️ Inconsistencias detectadas:")
-            for i in inconsistencias:
-                print(i)
-
-        return send_file(ruta, as_attachment=True)
+        return {
+            "status": "ok",
+            "archivo": ruta,
+            "inconsistencias": inconsistencias
+        }
 
     except Exception as e:
         print("❌ ERROR GENERANDO EXCEL:", str(e))
@@ -166,6 +158,14 @@ def generar_excel():
             "detalle": str(e)
         }, 500
 
+@app.route("/descargar")
+def descargar():
+    ruta = request.args.get("ruta")
+
+    if not ruta or not os.path.exists(ruta):
+        return {"error": "Archivo no encontrado"}, 404
+
+    return send_file(ruta, as_attachment=True)
 
 # ---------------- MAIN ----------------
 if __name__ == "__main__":
