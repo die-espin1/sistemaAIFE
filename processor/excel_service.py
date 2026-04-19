@@ -1,5 +1,6 @@
 import shutil
 import openpyxl
+import os
 
 from processor.handlers import *
 
@@ -62,8 +63,14 @@ def clasificar_anexo(dte, nit, dui, nombre):
 
 def generar_anexos(documentos, nit, dui, nombre, salida_path):
 
-    # copiar plantilla
-    shutil.copy("plantilla.xlsm", salida_path)
+    # 🔥 Ruta robusta de plantilla (clave para Render)
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    plantilla = os.path.join(BASE_DIR, "..", "plantilla.xlsm")
+
+    if not os.path.exists(plantilla):
+        raise Exception("❌ plantilla.xlsm no encontrada en el servidor")
+
+    shutil.copy(plantilla, salida_path)
 
     wb = openpyxl.load_workbook(salida_path, keep_vba=True)
 
